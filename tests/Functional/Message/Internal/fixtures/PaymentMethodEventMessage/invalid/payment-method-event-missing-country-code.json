@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "identifier": "payment-method-event",
+  "timestamp": 1636717394,
+  "payload": {
+    "last4": "2134",
+    "bin": "516811",
+    "user_id": 810,
+    "card_id": "ddcbc8a1-80aa-4b5f-86a2-f6637dfc451a",
+    "timestamp": 1640693579,
+    "cardholder_name": "Vasya Pupkin",
+    "card_type": "credit",
+    "is_debit": false,
+    "ip": "192.168.1.1",
+    "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1 Safari/605.1.15",
+    "device_id": "f06e1b6c-e7ba-4ae4-85f8-a7f3a89919f3",
+    "event_id": "paymentMethod"
+  },
+  "_meta": []
+}
+

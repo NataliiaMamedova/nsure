@@ -1,0 +1,37 @@
+framework:
+    messenger:
+        # Uncomment this (and the failed transport below) to send failed messages to this transport for later handling.
+        # failure_transport: failed
+
+        transports:
+            # https://symfony.com/doc/current/messenger.html#transport-configuration
+            # failed: 'doctrine://default?queue_name=failed'
+            card_events_queue:
+                dsn: '%env(CARD_EVENTS_QUEUE_URL)%'
+                serializer: 'Happyr\MessageSerializer\Serializer'
+            internal_event_queue:
+                dsn: '%env(INTERNAL_EVENT_QUEUE_URL)%'
+                serializer: 'Happyr\MessageSerializer\Serializer'
+            user_events_queue:
+                dsn: '%env(USER_EVENTS_QUEUE_URL)%'
+                serializer: 'Happyr\MessageSerializer\Serializer'
+            transaction_queue:
+                dsn: '%env(PROCESSING_TRANSACTION_QUEUE_URL)%'
+                serializer: 'Happyr\MessageSerializer\Serializer'
+            user_verification_queue:
+                dsn: '%env(USER_VERIFICATION_QUEUE_URL)%'
+                serializer: 'Happyr\MessageSerializer\Serializer'
+        routing:
+            'App\Message\Internal\PhoneVerificationEventMessage': internal_event_queue
+            'App\Message\Internal\EmailVerificationEventMessage': internal_event_queue
+            'App\Message\Internal\MerchantFinalDecisionEventMessage': internal_event_queue
+            'App\Message\Internal\TxCancelEventMessage': internal_event_queue
+            'App\Message\Internal\SignUpEventMessage': internal_event_queue
+            'App\Message\Internal\TxFailureEventMessage': internal_event_queue
+            'App\Message\Internal\PaymentMethodEventMessage': internal_event_queue
+            'App\Message\Internal\SignInEventMessage': internal_event_queue
+            'App\Message\Internal\RecipientUpdateEventMessage': internal_event_queue
+            'App\Message\Internal\SignOutEventMessage': internal_event_queue
+            'App\Message\UserLoggedInMessage': user_events_queue
+            'App\Message\UserTokenRefreshedMessage': user_events_queue
+            'App\Message\UserRegisteredMessage': user_events_queue

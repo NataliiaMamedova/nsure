@@ -1,0 +1,200 @@
+service: nsure-service
+useDotenv: false # https://www.serverless.com/framework/docs/deprecations/#LOAD_VARIABLES_FROM_ENV_FILES
+unresolvedVariablesNotificationMode: "error"
+variablesResolutionMode: 20210326
+frameworkVersion: "2"
+configValidationMode: warn
+deprecationNotificationMode: warn:summary
+
+provider:
+  apiGateway:
+    restApiId: ${ssm:/pb/${self:provider.stage}/apigw/PaybisExternal/id}
+    restApiRootResourceId: ${ssm:/pb/${self:provider.stage}/apigw/PaybisExternal/rootResourceId}
+    restApiResources:
+      "/admin": ${ssm:/pb/${self:provider.stage}/apigw/PaybisExternal/adminResourceId}
+      "/internal": ${ssm:/pb/${self:provider.stage}/apigw/PaybisExternal/internalResourceId}
+      "/public": ${ssm:/pb/${self:provider.stage}/apigw/PaybisExternal/publicResourceId}
+  vpc:
+    securityGroupIds: [ !Ref LambdaEC2SecurityGroup ]
+    subnetIds: ${ssm:/pb/vpc/privateSubnetIds}
+  logRetentionInDays: 14
+  name: aws
+  region: ${opt:region, "eu-west-1"}
+  lambdaHashingVersion: 20201221
+  runtime: provided.al2
+  stage: ${opt:stage, 'dev'}
+  tracing:
+    lambda: true
+    apiGateway: true
+  logs:
+    httpApi: true
+  environment:
+    APP_ENV: ${self:custom.${self:provider.stage}.appEnv, self:custom.default.appEnv}
+    DEPLOYMENT_ENV: ${self:provider.stage}
+    AWS_DYNAMODB_TABLE_NAME: !Ref DynamoDBSessionInfoTableV1
+    CARD_EVENTS_QUEUE_URL: !Ref CardEventsQueue
+    INTERNAL_EVENT_QUEUE_URL: !Ref InternalEventQueue
+    REDIS_DSN: redis://#{ElastiCacheCluster.RedisEndpoint.Address}:#{ElastiCacheCluster.RedisEndpoint.Port}
+    PROCESSING_TRANSACTION_QUEUE_URL: ${self:custom.processingTransactionQueueUrl}
+    USER_EVENTS_QUEUE_URL: !Ref UserEventsQueue
+    USER_VERIFICATION_QUEUE_URL: !Ref UserVerificationQueue
+    PROCESSING_HOST: ${ssm:/pb/${self:provider.stage}/apigw/PaybisExternal/url}
+  iam:
+    role:
+      statements:
+        - Effect: Allow # Metrics
+          Action:
+            - cloudwatch:PutMetricData
+          Resource: "*"
+        - Effect: Allow
+          Action:
+            - xray:PutTraceSegments
+            - xray:PutTelemetryRecords
+          Resource:
+            - "*"
+        - Effect: Allow # DynamoDB
+          Action:
+            - dynamodb:PutItem
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:Scan
+            - dynamodb:Query
+          Resource:
+            - !GetAtt DynamoDBSessionInfoTableV1.Arn
+            - !Join
+              - ""
+              -   - !GetAtt DynamoDBSessionInfoTableV1.Arn
+                  - /index/*
+        - Effect: Allow
+          Action:
+            - sqs:GetQueueUrl
+            - sqs:SendMessage
+          Resource:
+            - !GetAtt CardEventsQueue.Arn
+            - !GetAtt InternalEventQueue.Arn
+            - !GetAtt UserEventsQueue.Arn
+            - !GetAtt UserVerificationQueue.Arn
+        - Effect: Allow
+          Action:
+            - sqs:GetQueueUrl
+            - sqs:ReceiveMessage
+          Resource:
+            - !GetAtt CardEventsQueue.Arn
+            - !GetAtt InternalEventQueue.Arn
+            - !GetAtt UserEventsQueue.Arn
+            - !GetAtt TransactionEventQueue.Arn
+            - !GetAtt UserVerificationQueue.Arn
+        - Effect: Allow
+          Action: [ execute-api:Invoke ]
+          Resource:
+            - ${self:custom.paybisApiExecutionArn}/*/GET/internal/processing/v2/transaction/*/check-info
+custom:
+  prefix: ${self:provider.stage}-${self:service}
+  # https://github.com/davidgf/serverless-plugin-canary-deployments/tree/v0.4.8#default-configurations
+  lambdaResource: ${self:custom.${self:provider.stage}.lambdaResource, self:custom.default.lambdaResource}
+  sessionInfoDBTableV1Name: ${self:custom.prefix}-session-info-v1
+  cardEventsQueueName: ${self:custom.prefix}-CardEventsQueue
+  cardEventsTopicArn: ${ssm:/cardentry/${self:provider.stage}/sns/card-service/CardEventTopic/arn}
+  internalEventQueueName: ${self:custom.prefix}-InternalEventQueue
+  transactionEventQueueName: ${self:custom.prefix}-TransactionEventQueue
+  processingTransactionEventTopicArn: ${ssm:/pb/${self:provider.stage}/sns/processing/TransactionEventTopic/arn}
+  processingTransactionQueueUrl: ${ssm:/pb/${self:provider.stage}/sqs/ProcessingTransactionQueue/url}
+  userEventsQueueName: ${self:custom.prefix}-UserEventsQueue
+  userEventsTopicArn: ${ssm:/pb/${self:provider.stage}/sns/UserEvents/arn}
+  userVerificationQueueName: ${self:custom.prefix}-UserVerificationQueue
+  userVerificationTopicArn: ${ssm:/pb/${self:provider.stage}/sns/processing/UserVerificationTopic/arn}
+  paybisApiExecutionArn: ${ssm:/pb/${self:provider.stage}/apigw/PaybisExternal/executionArn}
+  prod:
+    lambdaResource: prod
+    appEnv: prod
+  default:
+    lambdaResource: default
+    appEnv: staging
+  deploymentSettings:
+    stages:
+      - prod
+  corsOrigin:
+    prod: https://paybis.com,https://*.paybis.com
+    default: "*"
+  corsAuthorizationContentTypeWithoutCredentials:
+    origin: ${self:custom.corsOrigin.${self:provider.stage}, self:custom.corsOrigin.default}
+    headers: [Authorization, Content-Type, X-Correlation-Id]
+    allowCredentials: false
+
+plugins:
+  - ./vendor/bref/bref
+  - serverless-pseudo-parameters
+  - serverless-iam-roles-per-function
+  - serverless-plugin-canary-deployments
+  - serverless-plugin-tracing
+
+functions:
+  healthcheck:
+    tracing: false
+    handler: public/index.php
+    layers:
+      - ${bref:layer.php-80-fpm}
+    events:
+      - http: GET /public/${self:service}/health
+  symfony:
+    handler: public/index.php
+    timeout: 30 # in seconds
+    layers:
+      - ${bref:layer.php-80-fpm}
+    events:
+      - http:
+          path: /public/${self:service}/v1/rand
+          method: GET
+  internal_event_consumer:
+    handler: bin/consumer/internal_event_consumer
+    timeout: 29
+    reservedConcurrency: 5
+    layers:
+      - ${bref:layer.php-80}
+    events:
+      -   sqs:
+            arn: !GetAtt InternalEventQueue.Arn
+            batchSize: 1
+  transaction_event_queue_consumer:
+    handler: bin/consumer/transaction_event_queue_consumer
+    timeout: 29 # in seconds
+    layers:
+      - ${bref:layer.php-80}
+    events:
+      -   sqs:
+            arn: !GetAtt TransactionEventQueue.Arn
+            batchSize: 1 # Only 1 item at a time to simplify error handling
+  user_events_consumer:
+    handler: bin/consumer/user_events_consumer
+    timeout: 29
+    reservedConcurrency: 5
+    layers:
+      - ${bref:layer.php-80}
+    events:
+      -   sqs:
+            arn: !GetAtt UserEventsQueue.Arn
+            batchSize: 1
+resources:
+  - ${file(./serverless_resources/lambda-${self:custom.lambdaResource}.yaml)}
+  - ${file(./serverless_resources/dynamodb.yaml)}
+  - ${file(./serverless_resources/sqs-card-events-queue.yaml)}
+  - ${file(./serverless_resources/internal-event-queue.yaml)}
+  - ${file(./serverless_resources/sqs-transaction-event-queue.yaml)}
+  - ${file(./serverless_resources/sqs-user-events-queue.yaml)}
+  - ${file(./serverless_resources/elasticache.yml)}
+  - ${file(./serverless_resources/sqs-user-verification-queue.yaml)}
+
+package:
+  patterns:
+    #exclude
+    - "!docs/**"
+    - "!node_modules/**"
+    - "!tests/**"
+    - "!var/**"
+    - "!.gitlab/**"
+    - "!docker/**"
+    - "!serverless_resources/**"
+    - "!hooks/**"
+    #include
+    - "var/cache/prod/**" # allows to deploy a pre-warmed container
+    - "var/cache/staging/**" # allows to deploy a pre-warmed container

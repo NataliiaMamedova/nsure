@@ -1,0 +1,35 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  TransactionEventQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: ${self:custom.transactionEventQueueName}
+  TransactionEventQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: ["SQS:SendMessage"]
+            Effect: Allow
+            Principal: "*"
+            Resource: !GetAtt TransactionEventQueue.Arn
+            Condition:
+              ArnEquals:
+                "aws:SourceArn": ${self:custom.processingTransactionEventTopicArn}
+      Queues:
+        - Ref: TransactionEventQueue
+  TransactionEventQueueSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: ${self:custom.processingTransactionEventTopicArn}
+      Endpoint: !GetAtt TransactionEventQueue.Arn
+      Protocol: sqs
+      RawMessageDelivery: true
+      FilterPolicy:
+        message:
+          - TransactionRejectedMessage
+          - TransactionCancelledMessage
+          - TransactionCompletedMessage
+Outputs:
+  TransactionEventQueueArn:
+    Value: !GetAtt [TransactionEventQueue, Arn]

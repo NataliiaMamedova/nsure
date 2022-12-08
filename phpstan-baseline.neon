@@ -1,0 +1,7 @@
+parameters:
+	ignoreErrors:
+		-
+			message: "#^Cannot access offset 'App\\\\\\\\NSureClient\\\\\\\\Response\\\\\\\\ResponseEventResponseInterface' on array\\<string, string\\>\\|false\\.$#"
+			count: 1
+			path: src/NSureClient/HttpClient.php
+

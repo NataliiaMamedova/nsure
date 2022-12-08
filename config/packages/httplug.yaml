@@ -1,0 +1,87 @@
+parameters:
+    httplug.user_agent: '%env(APP_VERSION)%'
+
+services:
+    Http\Message\Formatter\FullHttpMessageFormatter:
+        arguments:
+            $maxBodyLength: 10000
+
+    httplug.plugin.metrics:
+        autowire: true
+        class: PayBis\Httplug\Middleware\MetricsHttplugPlugin
+        arguments:
+            $metricCollector: '@metrics.collector.cloudwatch'
+
+    httplug.plugin.aws_xray_paybis:
+        class: PayBis\XrayIntegration\Middleware\HttplugXrayPluginService
+        arguments:
+            $eventDispatcher: '@event_dispatcher'
+            $config: { traced: true, awsAccountId: "%env(AWS_PAYBIS_ACCOUNT_ID)%" }
+
+    httplug.plugin.sentry:
+        class: PayBis\Httplug\Middleware\SentryLoggerPlugin
+
+    httplug.plugin.full_logger:
+        class: Http\Client\Common\Plugin\LoggerPlugin
+        arguments:
+            $logger: '@logger'
+            $formatter: '@Http\Message\Formatter\FullHttpMessageFormatter'
+
+    httplug.plugin.retry:
+        class: Http\Client\Common\Plugin\RetryPlugin
+        arguments:
+            $config:
+                retries: 1
+
+    httplug.plugin.aws_signer:
+        class: PayBis\Httplug\Middleware\AwsHttpPlugPluginService
+        arguments:
+            $enabled: "%env(bool:AWS_SIGN_REQUESTS)%"
+            $region: "%env(AWS_REGION)%"
+            $key: "%env(AWS_ACCESS_KEY_ID)%"
+            $secret: "%env(AWS_SECRET_ACCESS_KEY)%"
+            $token: "%env(AWS_SESSION_TOKEN)%"
+
+httplug:
+    discovery:
+        client: 'auto'
+
+    clients:
+        nsure_client:
+            factory: 'httplug.factory.guzzle7'
+            config:
+                timeout: 10
+            plugins:
+                - header_set:
+                      headers:
+                          'Content-Type': 'application/json'
+                          'Authorization': '%env(NSURE_AUTHORIZATION_CODE)%'
+                          'x-nsure-api-version': '%env(NSURE_API_VERSION)%'
+                - add_host:
+                      host: '%env(NSURE_API_URL)%'
+                - 'httplug.plugin.content_length'
+                - 'httplug.plugin.redirect'
+                - 'httplug.plugin.sentry'
+                - 'httplug.plugin.metrics'
+                - 'httplug.plugin.aws_xray_paybis'
+                - 'httplug.plugin.retry'
+                - 'httplug.plugin.full_logger'
+        processing:
+            factory: 'httplug.factory.guzzle7'
+            config:
+                timeout: 15
+            plugins:
+                -   header_set:
+                        headers:
+                            'Content-Type': 'application/json'
+                            'User-Agent': '%httplug.user_agent%'
+                -   base_uri:
+                        uri: '%env(PROCESSING_HOST)%'
+                - 'httplug.plugin.content_length'
+                - 'httplug.plugin.redirect'
+                - 'httplug.plugin.aws_signer'
+                - 'httplug.plugin.sentry'
+                - 'httplug.plugin.metrics'
+                - 'httplug.plugin.aws_xray_paybis'
+                - 'httplug.plugin.retry'
+                - 'httplug.plugin.full_logger'

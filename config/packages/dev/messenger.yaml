@@ -1,0 +1,11 @@
+framework:
+  messenger:
+    transports:
+      sync: 'sync://'
+
+    routing:
+      'App\Message\Internal\PhoneVerificationEventMessage': sync
+      'App\Message\Internal\EmailVerificationEventMessage': sync
+      'App\Message\Internal\MerchantFinalDecisionEventMessage': sync
+      'App\Message\Internal\SignUpEventMessage': sync
+      'App\Message\Internal\PaymentMethodEventMessage': sync

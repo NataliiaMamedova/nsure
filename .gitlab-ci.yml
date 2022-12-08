@@ -1,0 +1,189 @@
+variables:
+  DOCKER_VERSION: "20.08"
+  ECS_CHECK_DIRS: src tests
+  SERVERLESS_DEPLOY_DOCKER_IMAGE: "941462808515.dkr.ecr.eu-west-1.amazonaws.com/deployer:php8_sls2650"
+  SERVERLESS_DEPLOY_EXTRA_ARGS: " --force "
+  COMPOSER_INSTALL_DOCKER_IMAGE: "941462808515.dkr.ecr.eu-west-1.amazonaws.com/php:php8"
+  PHPUNIT_DOCKER_IMAGE: 941462808515.dkr.ecr.eu-west-1.amazonaws.com/php:php8
+  CONTRACT_DOCKER_IMAGE: 941462808515.dkr.ecr.eu-west-1.amazonaws.com/php:php8
+  ECS_DOCKER_IMAGE: 941462808515.dkr.ecr.eu-west-1.amazonaws.com/php:php8
+  SERVERLESS_DEPLOY_MIGRATE_ENABLED: "false"
+  SERVERLESS_DEPLOY_PACT_CHECK_ENABLED: "false"
+  SERVERLESS_DEPLOY_PACT_TAG_ENABLED: "false"
+  SLACK_ICON_EMOJI: ":spider_web:"
+  SENTRY_PROJECT: ${CI_PROJECT_NAME}
+  ECS_OUTPUT_FORMAT: json
+  PHPSTAN_DOCKER_IMAGE: ghcr.io/phpstan/phpstan:0.12
+
+include:
+  - project: techcloud/shared/ci-jobs-paybis-services
+    ref: master
+    file:
+      - /composer-install/composer-install.gitlab-ci.yml
+      - /contract/contract.gitlab-ci.yml
+      - /ecs/ecs.gitlab-ci.yml
+      - /phpunit/phpunit.gitlab-ci.yml
+      - /phpstan/phpstan.gitlab-ci.yml
+      - /releaser/releaser.gitlab-ci.yml
+      - /serverless-deploy/serverless-deploy.gitlab-ci.yml
+      - /sonarcloud/sonarcloud.gitlab-ci.yml
+
+stages:
+  - composer
+  - composer-dev
+  - test
+  - code quality
+  - external
+  - package
+  - deploy
+
+composer:no-dev:
+  stage: composer
+  only:
+    - master
+    - merge_requests
+    - tags
+  extends: .composer.install.no-dev
+
+composer:dev:
+  stage: composer-dev
+  only:
+    - master
+    - merge_requests
+    - tags
+  extends: .composer.install.dev
+  dependencies:
+    - composer:no-dev
+
+phpunit:
+  stage: test
+  only:
+    - master
+    - merge_requests
+  extends: .phpunit
+  dependencies:
+    - composer:dev
+
+#contract:branch:
+#  stage: test
+#  only:
+#    - master
+#    - merge_requests
+#  extends: .contract.consumer
+#  dependencies:
+#    - composer:dev
+#  variables:
+#    PACT_CONSUMER_VERSION: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+#    PACT_CONSUMER_TAG: $CI_COMMIT_REF_SLUG
+#  artifacts:
+#    paths:
+#      - var/log/pact.log
+#    expire_in: 12 hours
+#
+#contract:tag:
+#  stage: test
+#  only:
+#    - tags
+#  extends: .contract.consumer
+#  dependencies:
+#    - composer:dev
+#  variables:
+#    PACT_CONSUMER_VERSION: $CI_COMMIT_TAG-$CI_COMMIT_SHORT_SHA
+#    PACT_CONSUMER_TAG: $CI_COMMIT_TAG
+
+phpstan:
+  stage: code quality
+  only:
+    - master
+    - merge_requests
+  extends: .phpstan
+  dependencies:
+    - composer:dev
+  artifacts:
+    reports:
+      junit: report.xml
+
+ecs:
+  stage: code quality
+  only:
+    - master
+    - merge_requests
+  extends: .ecs
+  dependencies:
+    - composer:dev
+
+sonarcloud:
+  stage: code quality
+  only:
+    - master
+    - merge_requests
+  extends: .sonarcloud
+  dependencies:
+    - phpunit
+
+package:releaser:
+  stage: package
+  only:
+    - master
+  extends: .releaser.notes
+
+.deploy:
+  extends: .serverless.deploy
+  variables:
+    SERVERLESS_DEPLOY_SYMFONY_CACHE_WARMUP_ENV: staging
+  dependencies:
+    - composer:no-dev
+
+qa:
+  extends: .deploy
+  variables:
+    SERVERLESS_STAGE: qa
+  environment:
+    name: qa
+
+testing:
+  extends: .deploy
+  variables:
+    SERVERLESS_STAGE: testing
+  environment:
+    name: testing
+
+preprod:
+  extends: .deploy
+  variables:
+    SERVERLESS_STAGE: preprod
+  environment:
+    name: preprod
+
+staging1:
+  extends: .deploy
+  variables:
+    SERVERLESS_STAGE: staging1
+  environment:
+    name: staging1
+
+staging2:
+  extends: .deploy
+  variables:
+    SERVERLESS_STAGE: staging2
+  environment:
+    name: staging2
+
+staging3:
+  extends: .deploy
+  variables:
+    SERVERLESS_STAGE: staging3
+  environment:
+    name: staging3
+
+prod:
+  extends: .deploy
+  only: [tags]
+  variables:
+    SERVERLESS_STAGE: prod
+    SERVERLESS_AWS_REGION: us-east-1
+    SERVERLESS_AWS_ROLE_ARN: arn:aws:iam::196551278362:role/pb-prod-gitlab
+    SLACK_CHANNEL: releases
+    SERVERLESS_DEPLOY_SYMFONY_CACHE_WARMUP_ENV: prod
+  environment:
+    name: prod

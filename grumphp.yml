@@ -1,0 +1,25 @@
+grumphp:
+    tasks:
+        phpstan:
+            configuration: .phpstan.neon
+            level: 8
+            use_grumphp_paths: false
+        composer: ~
+        #        phpcpd:
+        #            directory: ['.']
+        phpversion:
+            project: '8.0'
+        git_blacklist:
+            keywords:
+                - "die("
+                - "var_dump("
+                - "dump("
+                - "exit;"
+                - "Auto-merged!"
+            triggered_by: ['php', 'lock']
+        phpunitbridge:
+            config_file: ~
+            testsuite: ~
+            group: []
+            always_execute: false
+        ecs: ~

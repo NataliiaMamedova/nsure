@@ -1,0 +1,33 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  UserVerificationQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: ${self:custom.userVerificationQueueName}
+  UserVerificationQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: ["SQS:SendMessage"]
+            Effect: Allow
+            Principal: "*"
+            Resource: !GetAtt UserVerificationQueue.Arn
+            Condition:
+              ArnEquals:
+                "aws:SourceArn": ${self:custom.userVerificationTopicArn}
+      Queues:
+        - Ref: UserVerificationQueue
+  UserVerificationQueueSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: ${self:custom.userVerificationTopicArn}
+      Endpoint: !GetAtt UserVerificationQueue.Arn
+      Protocol: sqs
+      RawMessageDelivery: true
+      FilterPolicy:
+        message:
+          - BasicVerificationApprovedMessage
+Outputs:
+  UserVerificationQueueArn:
+    Value: !GetAtt [UserVerificationQueue, Arn]

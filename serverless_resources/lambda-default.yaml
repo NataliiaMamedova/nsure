@@ -1,0 +1,28 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  LambdaEC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Open Lambda for access
+      VpcId: ${ssm:/pb/vpc/id}
+      SecurityGroupEgress:
+        - IpProtocol: "tcp"
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: Allow https from Lambda
+        - IpProtocol: "tcp"
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: Allow http from Lambda
+  LambdaEC2SecurityGroupRuleFromLambdaToRedis:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: Allow lambda using redis
+      GroupId: !Ref LambdaEC2SecurityGroup
+      IpProtocol: tcp
+      FromPort: 6379
+      ToPort: 6379
+      DestinationSecurityGroupId: !Ref ECSecurityGroup
+

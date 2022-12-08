@@ -1,0 +1,6 @@
+services:
+    httplug.plugin.metrics:
+        autowire: true
+        class: PayBis\Httplug\Middleware\MetricsHttplugPlugin
+        arguments:
+            $metricCollector: '@metrics.collector.in_memory'

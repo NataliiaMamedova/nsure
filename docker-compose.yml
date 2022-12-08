@@ -1,0 +1,60 @@
+version: "3.5"
+
+services:
+  nsure-service:
+    image: registry.gitlab.com/techcloud/docker-images/bref-nginx
+    container_name: nsure-service_nginx
+    volumes:
+      - .:/var/task
+    links:
+      - php
+      - redis
+    environment:
+      HANDLER: public/index.php
+      DOCUMENT_ROOT: public
+      PHP_DOCKER_HOST: nsure-service_php
+    labels:
+      - "traefik.enable=true"
+      - "traefik.name=nsure-service"
+      - "traefik.http.routers.nsure-service.entrypoints=http"
+      - "traefik.http.routers.nsure-service_secured.rule=Host(`nsure-service.local.paybis.com`)"
+      - "traefik.http.routers.nsure-service_secured.entrypoints=https"
+      - "traefik.http.routers.nsure-service_secured.tls=true"
+
+  php:
+    container_name: nsure-service_php
+    image: bref/php-80-fpm-dev
+    environment:
+      LAMBDA_TASK_ROOT: /var/task
+    labels:
+      - "traefik.enable=false"
+    volumes:
+      - .:/var/task:ro
+      - ./var/cache:/var/task/var/cache
+      - ./var/log:/var/task/var/log
+
+  console:
+    tty: true
+    build:
+      context: ./docker/php
+    entrypoint: /bin/bash
+    labels:
+      - "traefik.enable=false"
+    volumes:
+      - .:/var/task:rw
+      - ./var/cache:/var/task/var/cache
+      - ./var/log:/var/task/var/log
+      - "~/.composer://.composer"
+
+  redis:
+    image: redis:alpine
+    container_name: nsure-service_redis
+    environment:
+      ALLOW_EMPTY_PASSWORD: 1
+    ports:
+      - "6379:6379"
+
+networks:
+  default:
+    external: true
+    name: paybis

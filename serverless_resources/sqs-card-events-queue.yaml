@@ -1,0 +1,34 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  CardEventsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: ${self:custom.cardEventsQueueName}
+  CardEventsQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: ["SQS:SendMessage"]
+            Effect: Allow
+            Principal: "*"
+            Resource: !GetAtt CardEventsQueue.Arn
+            Condition:
+              ArnEquals:
+                "aws:SourceArn": ${self:custom.cardEventsTopicArn}
+      Queues:
+        - Ref: CardEventsQueue
+  CardEventsQueueSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: ${self:custom.cardEventsTopicArn}
+      Endpoint: !GetAtt CardEventsQueue.Arn
+      Protocol: sqs
+      RawMessageDelivery: true
+      FilterPolicy:
+        message:
+          - CardAuthorizedMessage
+          - CardAuthFailedEventMessage
+Outputs:
+  CardEventsQueueArn:
+    Value: !GetAtt [CardEventsQueue, Arn]

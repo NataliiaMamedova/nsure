@@ -1,0 +1,9 @@
+aws:
+    version: latest
+    region: "%env(AWS_REGION)%"
+    http:
+        connect_timeout: 15
+    credentials:
+        key: "%env(AWS_ACCESS_KEY_ID)%"
+        secret: "%env(AWS_SECRET_ACCESS_KEY)%"
+        token: "%env(AWS_SESSION_TOKEN)%"

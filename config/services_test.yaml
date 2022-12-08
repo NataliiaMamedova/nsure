@@ -1,0 +1,30 @@
+services:
+  _defaults:
+    autowire: true
+    public: true
+
+  # Clear deprecations in tests
+  Psr\Container\ContainerInterface: '@service_container'
+  Symfony\Component\DependencyInjection\ContainerInterface: '@service_container'
+
+  Psr\Log\LoggerInterface:
+    class: Psr\Log\NullLogger
+    public: true
+
+  Http\Mock\Client: ~
+
+  App\NSure\NSureClient:
+    arguments:
+      $client: '@Http\Mock\Client'
+      $serializer: '@default.serializer'
+
+  App\NSure\Service\NSureService:
+    arguments:
+      $nSureClient: '@App\NSure\NSureClient'
+
+  Paybis\Processing\Api\Client:
+    arguments:
+      $httpClient: '@Http\Mock\Client'
+
+  App\Repository\SessionInfoRepositoryInterface:
+    class: App\Tests\Stub\FakeSessionInfoRepository

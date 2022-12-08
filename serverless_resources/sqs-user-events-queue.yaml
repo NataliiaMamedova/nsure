@@ -1,0 +1,36 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  UserEventsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: ${self:custom.userEventsQueueName}
+  UserEventsQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: ["SQS:SendMessage"]
+            Effect: Allow
+            Principal: "*"
+            Resource: !GetAtt UserEventsQueue.Arn
+            Condition:
+              ArnEquals:
+                "aws:SourceArn": ${self:custom.userEventsTopicArn}
+      Queues:
+        - Ref: UserEventsQueue
+  UserEventsQueueSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: ${self:custom.userEventsTopicArn}
+      Endpoint: !GetAtt UserEventsQueue.Arn
+      Protocol: sqs
+      RawMessageDelivery: true
+      FilterPolicy:
+        message:
+          - UserLoggedInMessage
+          - UserLoggedOutMessage
+          - UserTokenRefreshedMessage
+          - UserRegisteredMessage
+Outputs:
+  UserEventsQueueArn:
+    Value: !GetAtt [UserEventsQueue, Arn]

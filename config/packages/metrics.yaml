@@ -1,0 +1,19 @@
+services:
+    Paybis\Metrics\Clock: ~
+
+    metrics.collector.in_memory:
+        class: Paybis\Metrics\MetricCollector\InMemoryMetricCollector
+        autowire: true
+        shared: true
+
+    metrics.collector.cloudwatch:
+        class: Paybis\Metrics\MetricCollector\CloudWatchMetricCollector
+        autowire: true
+        shared: true
+        arguments:
+            $namespace: 'app:nsure-service'
+            $extraDimensions:
+              { Tag: HTTPlug, Environment: '%env(DEPLOYMENT_ENV)%' }
+        tags:
+            - { name: kernel.event_listener, method: flush, priority: -1024, event: kernel.terminate }
+            - { name: kernel.event_listener, method: flush, priority: -1024, event: console.terminate }

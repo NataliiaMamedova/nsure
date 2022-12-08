@@ -1,0 +1,6 @@
+parameters:
+    sentry.options:
+        environment: "%env(DEPLOYMENT_ENV)%"
+        release: '%env(APP_VERSION)%'
+        send_default_pii: true
+        prefixes: [ '%kernel.project_dir%' ]

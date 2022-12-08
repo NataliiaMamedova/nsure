@@ -1,0 +1,19 @@
+parameters:
+    level: 8
+    phpVersion: 80099
+    checkMissingIterableValueType: false
+    bootstrapFiles:
+        - vendor/autoload.php
+    paths:
+        - src
+includes:
+    - vendor/phpstan/phpstan-doctrine/extension.neon
+    - vendor/phpstan/phpstan-phpunit/extension.neon
+    - vendor/phpstan/phpstan-symfony/extension.neon
+    - vendor/ekino/phpstan-banned-code/extension.neon
+    - vendor/phpstan/phpstan-deprecation-rules/rules.neon
+    - vendor/phpstan/phpstan-doctrine/rules.neon
+    - vendor/phpstan/phpstan-phpunit/rules.neon
+    - vendor/phpstan/phpstan-strict-rules/rules.neon
+    - vendor/slam/phpstan-extensions/conf/slam-rules.neon
+    - vendor/symplify/phpstan-extensions/config/config.neon

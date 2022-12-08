@@ -1,0 +1,2 @@
+services:
+    Paybis\Metrics\MetricCollectorInterface: '@metrics.collector.in_memory'

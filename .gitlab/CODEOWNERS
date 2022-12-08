@@ -1,0 +1,21 @@
+CODEOWNERS  @a.moisejevs
+
+[DevOps]
+# Serverless
+serverless.yml             @techcloud/codeowners/devops
+/serverless_resources/     @techcloud/codeowners/devops
+/flavors.yaml              @techcloud/codeowners/devops
+/environments.yaml         @techcloud/codeowners/devops
+
+# Docker
+docker-compose.yml         @techcloud/codeowners/devops
+docker-compose-nfs.yml     @techcloud/codeowners/devops
+docker-compose.test.yml    @techcloud/codeowners/devops
+/docker                    @techcloud/codeowners/devops
+
+# CI/CD
+.gitlab-ci.yml             @techcloud/codeowners/devops
+.phpstan.neon              @techcloud/codeowners/devops
+ecs.yml                    @techcloud/codeowners/devops
+grumphp.yml                @techcloud/codeowners/devops
+Makefile                   @techcloud/codeowners/devops

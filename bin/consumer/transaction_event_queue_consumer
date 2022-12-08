@@ -1,0 +1,5 @@
+#!/usr/bin/env php
+<?php
+/** @var \Psr\Container\ContainerInterface $container */
+$container = require 'abstract_consumer.php';
+return $container->get('transaction_event_queue_consumer');

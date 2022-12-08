@@ -1,0 +1,13 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  InternalEventQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      MaximumMessageSize: 262144 # 256kb in bytes, maximum
+      MessageRetentionPeriod: 345600 # 4 days in seconds
+      QueueName: ${self:custom.internalEventQueueName}
+      VisibilityTimeout: 30
+Outputs:
+  InternalEventQueueArn:
+    Value: !GetAtt [InternalEventQueue, Arn]

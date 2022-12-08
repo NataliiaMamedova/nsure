@@ -1,0 +1,8 @@
+#!/usr/bin/env php
+<?php
+/** @var ContainerInterface $container */
+
+use Psr\Container\ContainerInterface;
+
+$container = require 'abstract_consumer.php';
+return $container->get('user_events_queue_consumer');
